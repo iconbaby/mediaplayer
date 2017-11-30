@@ -6,12 +6,17 @@ import android.media.MediaPlayer;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.SeekBar;
+import android.widget.TextView;
+
+import java.util.Timer;
+import java.util.TimerTask;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -28,11 +33,14 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     Button btnPause;
     @BindView(R.id.btn_stop)
     Button btnStop;
+    @BindView(R.id.video_current_position)
+    TextView videoCurrentPosition;
 
     private MediaPlayer player;
     private int seekProgress;
     private SurfaceHolder surfaceholder;
     private String videoPath = "/sdcard/test.mp4";
+    private VideoProgressUpdateTask videoprogressupdatetask;
 
 
     @Override
@@ -144,6 +152,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     public void surfaceCreated(SurfaceHolder holder) {
         Log.i(TAG, "surfaceCreated: ");
         autoPlay();
+
     }
 
     @Override
@@ -202,6 +211,9 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             player.setOnCompletionListener(this);
             player.setOnBufferingUpdateListener(this);
             player.prepare();
+            int duration = player.getDuration();
+            videoprogressupdatetask = new VideoProgressUpdateTask();
+            videoprogressupdatetask.execute(duration);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -215,6 +227,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     @Override
     public void onPrepared(MediaPlayer mp) {
         start();
+
     }
 
     @Override
@@ -223,5 +236,44 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         skbVideo.setSecondaryProgress(percent);
         int currentProgress = skbVideo.getMax() * player.getCurrentPosition() / player.getDuration();
         Log.e("currentProgress", "currentProgress----->" + currentProgress);
+    }
+
+    private class VideoProgressUpdateTask extends AsyncTask<Integer, Integer, Integer> {
+
+        @Override
+        protected Integer doInBackground(Integer... values) {
+            int currentPosition = 0;
+            new Timer().schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    Log.i(TAG, "run: ");
+                    publishProgress();
+                }
+            }, 0, 1000);
+
+            return null;
+        }
+
+        @Override
+        protected void onProgressUpdate(Integer... values) {
+            super.onProgressUpdate(values);
+            int currentPosition = player.getCurrentPosition();
+            Log.i(TAG, "onProgressUpdate: "+currentPosition);
+            String timeCurrent = "00:00:00";
+            if(currentPosition<60000){
+                timeCurrent = "00:"+"00:"+currentPosition/1000;
+            }else if(currentPosition <600000){
+                int mm = currentPosition / 1000 / 60;
+                int ss = currentPosition/1000 - mm*60;
+                timeCurrent = "00:"+mm+":"+ss;
+            }else{
+                int hh = currentPosition/1000/60/60;
+                int mm = currentPosition / 1000 / 60-hh*60;
+                int ss = currentPosition/1000- hh*60*60-mm*60;
+                timeCurrent = hh+":"+mm+":"+ss;
+            }
+            videoCurrentPosition.setText(timeCurrent);
+
+        }
     }
 }
